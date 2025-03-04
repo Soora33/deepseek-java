@@ -1,8 +1,0 @@
-spring:
-  application:
-    name: llm
-server:
-  port: 7780
-deepseek:
-  url: xxx
-  api-key: sk-xxx

@@ -3,6 +3,7 @@ package com.brain.llm.service;
 import com.brain.llm.domain.ChatRequest;
 import com.brain.llm.util.SearchUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -20,34 +21,58 @@ public class ChatService {
     private String API_URL;
     @Value("${deepseek.api-key}")
     private String API_KEY;
+    @Value("${esKnn.match}")
+    private String match;
+    @Value("${esKnn.work-check:50}")
+    private String workCheck;
+    @Value("${deepseek.search-engine}")
+    private String searchEngine;
+    @Value("${deepseek.search-key}")
+    private String searchKey;
     private static final int MAX_HISTORY = 10;
     private final Deque<Map<String, String>> conversationHistory = new ArrayDeque<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    private final SearchUtils searchUtils;
+    @Resource
+    private ElasticsearchKnnSearch elasticsearchKnnSearch;
 
     public ChatService() {
-        // 初始化搜索工具，使用SearXNG实例URL
-        this.searchUtils = new SearchUtils("xxx");
     }
 
     public SseEmitter handleChatRequest(ChatRequest request) {
         SseEmitter emitter = new SseEmitter();
         try {
+            SearchUtils searchUtils = new SearchUtils(searchEngine,searchKey);
 
             // 获取搜索结果
             StringBuilder context = new StringBuilder();
             if (request.isUseSearch()) {
-                List<Map<String, String>> searchResults = searchUtils.search(request.getMessage(), 3);
+                List<Map<String, String>> searchResults = new ArrayList<>();
+                if (searchEngine.contains("tavily")) {
+                    searchResults = searchUtils.tavilySearch(request.getMessage());
+                } else {
+                    searchResults = searchUtils.searXNG(request.getMessage(), 3);
+                }
                 if (!searchResults.isEmpty()) {
-                    context.append("\n\n搜索结果：\n");
+                    context.append("\n\n联网搜索结果：\n");
                     for (int i = 0; i < searchResults.size(); i++) {
                         Map<String, String> result = searchResults.get(i);
                         context.append(String.format("\n%d. %s\n", i + 1, result.get("title")));
-                        context.append(String.format("   %s\n", result.get("snippet")));
+                        context.append(String.format("   %s\n", result.get("content")));
                         context.append(String.format("   来源: %s\n", result.get("url")));
                     }
                 }
+            }
+
+            // 是否启用知识库
+            if (request.isUseRAG()) {
+                List<String> vectorSearch = elasticsearchKnnSearch.vectorSearch(request.isMaxToggle() ? 10 : 5, request.getMessage());
+                if (!vectorSearch.isEmpty()) {
+                    context.append("\n\n知识库参考：\n");
+                }
+                vectorSearch.forEach(data -> {
+                    context.append(data + "\n");
+                });
             }
 
             // 如果有上下文，添加系统消息
@@ -66,7 +91,7 @@ public class ChatService {
 
             // 准备请求体
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "deepseek-r1");
+            requestBody.put("model", "deepseek-reasoner");
             requestBody.put("messages", new ArrayList<>(conversationHistory));
             requestBody.put("stream", true);
 
@@ -77,7 +102,7 @@ public class ChatService {
             HttpRequest httpRequest = HttpRequest.newBuilder()
                     .uri(URI.create(API_URL + "/chat/completions"))
                     .header("Content-Type", "application/json")
-                    .header("Authorization", API_KEY)
+                    .header("Authorization", "Bearer " + API_KEY)
                     .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(requestBody)))
                     .build();
 

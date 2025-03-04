@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: llm
+server:
+  port: 7780
+deepseek:
+  url: https://api.deepseek.com
+#  api-key: sk-
+  api-key: sk-
+#  search-engine: https://api.tavily.com/search
+  search-engine: xxx
+#  search-key: tvly-dev-
+  search-key: xxx
+esKnn:
+  # 默认的 es 索引，无特殊需求不需要变动
+  index-name: xxx
+  # 默认的 es 匹配字段（匹配用户信息）
+  es-field: content
+  # 默认的 es 匹配字段（匹配向量）
+  es-vector-field: content_vector
+  match: match
+  rule: or
+  work-check: 0

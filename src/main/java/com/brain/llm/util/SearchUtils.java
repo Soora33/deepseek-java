@@ -1,22 +1,25 @@
 package com.brain.llm.util;
 
-import okhttp3.HttpUrl;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import okhttp3.*;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class SearchUtils {
-    private final String baseUrl;
+    private String baseUrl;
+    private String apiKey;
     private final OkHttpClient client;
     private final ObjectMapper objectMapper;
 
-    public SearchUtils(String searxngInstance) {
+    public SearchUtils(String searxngInstance,String apiKey) {
         this.baseUrl = searxngInstance;
+        this.apiKey = apiKey;
         this.client = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
@@ -24,7 +27,7 @@ public class SearchUtils {
         this.objectMapper = new ObjectMapper();
     }
 
-    public List<Map<String, String>> search(String query, int numResults) {
+    public List<Map<String, String>> searXNG(String query, int numResults) {
         List<Map<String, String>> results = new ArrayList<>();
         try {
             HttpUrl url = HttpUrl.parse(baseUrl + "/search").newBuilder()
@@ -56,6 +59,40 @@ public class SearchUtils {
                         processedResult.put("snippet", (String) result.get("content"));
                         results.add(processedResult);
                     }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("搜索时发生错误: " + e.getMessage());
+        }
+        return results;
+    }
+
+    public List<Map<String, String>> tavilySearch(String query) {
+        List<Map<String, String>> results = new ArrayList<>();
+        try {
+            Map<String,String> requestBody = new HashMap<String, String>();
+            requestBody.put("query", query);
+            Request request = new Request.Builder()
+                    .url(baseUrl)
+                    .post(RequestBody.create(MediaType.parse("application/json"), objectMapper.writeValueAsString(requestBody)))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer" + apiKey)
+                    .build();
+
+
+            try (Response response = client.newCall(request).execute()) {
+                if (!response.isSuccessful()) throw new IOException("请求失败: " + response);
+
+                JsonNode jsonNode = objectMapper.readTree(response.body().string()).get("results");
+
+                if (!jsonNode.isEmpty()) {
+                    jsonNode.forEach(data -> {
+                        Map<String, String> processedResult = new HashMap<>();
+                        processedResult.put("title", data.get("title").toString());
+                        processedResult.put("url", data.get("url").toString());
+                        processedResult.put("content", data.get("content").toString());
+                        results.add(processedResult);
+                    });
                 }
             }
         } catch (Exception e) {
