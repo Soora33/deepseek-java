@@ -4,13 +4,11 @@ spring:
 server:
   port: 7780
 deepseek:
-  url: https://api.deepseek.com
-#  api-key: sk-
-  api-key: sk-
-#  search-engine: https://api.tavily.com/search
-  search-engine: xxx
-#  search-key: tvly-dev-
-  search-key: xxx
+  url: https://api.deepseek.com/chat/completions
+  model-name: deepseek-reasoner
+  api-key: Bearer sk-45
+  search-engine: https://api.tavily.com/search
+  search-key: tvly-dev-pqjtn
 esKnn:
   # 默认的 es 索引，无特殊需求不需要变动
   index-name: xxx

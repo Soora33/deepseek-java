@@ -165,13 +165,6 @@ public class ElasticsearchKnnSearch {
             }
         } catch (Exception e) {
             e.printStackTrace();
-        } finally {
-            try {
-                close();
-                return vectorList;
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         }
         return vectorList;
     }

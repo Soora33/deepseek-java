@@ -21,10 +21,8 @@ public class ChatService {
     private String API_URL;
     @Value("${deepseek.api-key}")
     private String API_KEY;
-    @Value("${esKnn.match}")
-    private String match;
-    @Value("${esKnn.work-check:50}")
-    private String workCheck;
+    @Value("${deepseek.model-name}")
+    private String modelName;
     @Value("${deepseek.search-engine}")
     private String searchEngine;
     @Value("${deepseek.search-key}")
@@ -54,6 +52,7 @@ public class ChatService {
                     searchResults = searchUtils.searXNG(request.getMessage(), 3);
                 }
                 if (!searchResults.isEmpty()) {
+                    System.out.println("search results size（联网搜索个数）: " + searchResults.size());
                     context.append("\n\n联网搜索结果：\n");
                     for (int i = 0; i < searchResults.size(); i++) {
                         Map<String, String> result = searchResults.get(i);
@@ -67,6 +66,7 @@ public class ChatService {
             // 是否启用知识库
             if (request.isUseRAG()) {
                 List<String> vectorSearch = elasticsearchKnnSearch.vectorSearch(request.isMaxToggle() ? 10 : 5, request.getMessage());
+                System.out.println("知识库参考个数: " + vectorSearch.size());
                 if (!vectorSearch.isEmpty()) {
                     context.append("\n\n知识库参考：\n");
                 }
@@ -91,7 +91,7 @@ public class ChatService {
 
             // 准备请求体
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "deepseek-reasoner");
+            requestBody.put("model", modelName);
             requestBody.put("messages", new ArrayList<>(conversationHistory));
             requestBody.put("stream", true);
 
@@ -100,9 +100,9 @@ public class ChatService {
                     .connectTimeout(Duration.ofSeconds(600))
                     .build();
             HttpRequest httpRequest = HttpRequest.newBuilder()
-                    .uri(URI.create(API_URL + "/chat/completions"))
+                    .uri(URI.create(API_URL))
                     .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + API_KEY)
+                    .header("Authorization", API_KEY)
                     .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(requestBody)))
                     .build();
 
