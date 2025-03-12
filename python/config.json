@@ -1,0 +1,19 @@
+{
+  "model_path": "./model/m3e",
+  "index_file": "./data/faiss_temp.index",
+  "json_data_file": "./data/jsonData.json",
+  "faiss_dir": "./data/faiss_temp.index",
+  "vector_dim": 768,
+  "default_top_k": 5,
+  "similarity_threshold": 0.7,
+  "server_port": 5001,
+  "debug": true,
+  "result_format": {
+    "include_score": false,
+    "max_content_length": 1000
+  },
+  "data_fields": {
+    "metadata_fields": ["doc_name", "chapter", "item_number"],
+    "content_field": "content"
+  }
+}

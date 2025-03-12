@@ -8,10 +8,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
 
@@ -63,16 +66,37 @@ public class ChatService {
                 }
             }
 
-            // 是否启用知识库
+            // 是否启用知识库 es 实现
+//            if (request.isUseRAG()) {
+//                List<String> vectorSearch = elasticsearchKnnSearch.vectorSearch(request.isMaxToggle() ? 10 : 5, request.getMessage());
+//                System.out.println("知识库参考个数: " + vectorSearch.size());
+//                if (!vectorSearch.isEmpty()) {
+//                    context.append("\n\n知识库参考：\n");
+//                }
+//                vectorSearch.forEach(data -> {
+//                    context.append(data + "\n");
+//                });
+//            }
+
+            // 是否启用知识库 python 自带模型量化实现
             if (request.isUseRAG()) {
-                List<String> vectorSearch = elasticsearchKnnSearch.vectorSearch(request.isMaxToggle() ? 10 : 5, request.getMessage());
-                System.out.println("知识库参考个数: " + vectorSearch.size());
-                if (!vectorSearch.isEmpty()) {
-                    context.append("\n\n知识库参考：\n");
+                HttpClient client = HttpClient.newHttpClient();
+                String encodedMsg = URLEncoder.encode(request.getMessage(), StandardCharsets.UTF_8);
+                HttpRequest vectorRequest = HttpRequest.newBuilder()
+                        .uri(URI.create("http://localhost:5001/api/search?query=" + encodedMsg + "&top_k=" + (request.isMaxToggle() ? 10 : 5)))
+                        .build();
+
+                HttpResponse<String> response = client.send(vectorRequest, HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() != 200) {
+                    throw new IOException("Failed to get vector: HTTP " + response.statusCode());
                 }
-                vectorSearch.forEach(data -> {
-                    context.append(data + "\n");
-                });
+                String body = response.body();
+
+                System.out.println("知识库参考: " + body);
+                if (!body.isEmpty()) {
+                    context.append("\n\n知识库参考：\n");
+                    context.append(body);
+                }
             }
 
             // 如果有上下文，添加系统消息
@@ -137,7 +161,7 @@ public class ChatService {
                                     if (delta != null && delta.containsKey("content") && delta.get("content") != null) {
                                         // 如果是第一个回答内容，先打印分隔线
                                         if (aiResponseBuilder.isEmpty()) {
-                                            System.out.println("\n");
+                                            System.out.println("\n\n" + "=".repeat(20) + "思考结束" + "=".repeat(20) + "\n");
                                         }
                                         String content = (String) delta.get("content");
                                         aiResponseBuilder.append(content);
@@ -158,7 +182,6 @@ public class ChatService {
             // 创建AI响应消息并添加到历史记录
             Map<String, String> aiMessage = new HashMap<>();
             aiMessage.put("role", "assistant");
-            aiMessage.put("reasoning_content", reasoningBuilder.toString());
             aiMessage.put("content", aiResponseBuilder.toString());
             conversationHistory.add(aiMessage);
 
@@ -176,6 +199,7 @@ public class ChatService {
     }
 
 
+    // 解析响应
     private Map<String, Object> extractDeltaContent(Map<String, Object> response) {
         List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
         if (choices != null && !choices.isEmpty()) {
@@ -184,6 +208,7 @@ public class ChatService {
         return null;
     }
 
+    // 清除上下文信息
     public void clearHistory() {
         conversationHistory.clear();
     }

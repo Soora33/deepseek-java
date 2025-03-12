@@ -39,17 +39,23 @@ public class ElasticsearchKnnSearch {
     private final RestHighLevelClient esClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    // es 索引名
     @Value("${esKnn.index-name:sora_vector_index}")
     private String indexName;
+    // es 匹配的字段名
     @Value("${esKnn.es-field:content}")
     private String content;
+    // es 匹配的向量字段名
     @Value("${esKnn.es-vector-field:content_vector}")
     private String contentVector;
+    // 匹配方式，使用 match 匹配
     @Value("${esKnn.match:match}")
     private String match;
-    @Value("${esKnn.workCheck:0}")
+    // 单词匹配比例 一句话中 45% 以上的单词匹配
+    @Value("${esKnn.work-check:45}")
     private String workCheck;
-    @Value("${esKnn.rule:or}")
+    // 匹配逻辑，使用 and
+    @Value("${esKnn.rule:and}")
     private String rule;
 
 

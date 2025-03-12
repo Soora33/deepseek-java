@@ -17,5 +17,5 @@ esKnn:
   # 默认的 es 匹配字段（匹配向量）
   es-vector-field: content_vector
   match: match
-  rule: or
-  work-check: 0
+  rule: and
+  work-check: 45
