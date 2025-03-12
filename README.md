@@ -1,4 +1,5 @@
 本项目是基于 Java 实现的 deepseek 调用案例，并集成了联网搜索和本地知识库功能
+
 ## 项目结构
 项目分为 Java 代码和 Python 代码两部分。
 Java 代码位于 src 目录下，主要是 deepseek 的调用和联网搜索功能。
@@ -31,3 +32,5 @@ Python 版本：3.11
    // 是否启用知识库最大阈值
    "maxToggle": true
 }
+````
+更详细的使用说明参考：[在 java 中使用 deepseek 并接入联网搜索和知识库](https://33sora.com/posts/a39037a1.html)
